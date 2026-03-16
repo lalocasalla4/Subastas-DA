@@ -1,0 +1,27 @@
+# Reglas del proyecto — Sistema de Subastas (DAI 1C2026)
+
+## General
+- Usar TypeScript estricto en todo el proyecto, nunca usar any
+- Idioma del código: inglés. Comentarios: español
+- Siempre manejar errores con try/catch y devolver respuestas claras
+- No usar console.log en producción, usar un logger
+
+## Frontend (React Native + Expo)
+- Usar Expo Router para la navegación
+- Componentes funcionales con hooks, nunca clases
+- Los estilos van en StyleSheet.create() o en archivos separados por componente
+- Los colores y constantes siempre desde constants/Colors.ts
+- Las llamadas a la API siempre desde services/, nunca directo en el componente
+
+## Backend (Node.js + Express)
+- Todos los endpoints siguen REST: GET /recurso, POST /recurso, etc.
+- Autenticación con JWT en header Authorization: Bearer <token>
+- Validar siempre los datos de entrada antes de tocar la base de datos
+- La estructura de la base de datos existente (EstructuraActual.sql) no se modifica
+- Las tablas nuevas que necesitemos se agregan sin romper las existentes
+- WebSockets con Socket.io para todo lo que sea tiempo real (pujas)
+
+## Base de Datos
+- Respetar la estructura de EstructuraActual.sql
+- Nuevas tablas: medios_pago, notificaciones, sesiones_subasta
+- Nunca hacer queries directas en los controllers, siempre usar funciones de db/

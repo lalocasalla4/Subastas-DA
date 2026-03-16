@@ -1,0 +1,311 @@
+openapi: 3.0.0
+info:
+  title: SubastasApp API
+  description: API REST para el sistema de subastas dinámicas ascendentes — TPO DAI 1C2026
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000/api
+    description: Servidor de desarrollo
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+    Usuario:
+      type: object
+      properties:
+        id:
+          type: integer
+        nombre:
+          type: string
+        apellido:
+          type: string
+        email:
+          type: string
+        categoria:
+          type: string
+          enum: [comun, especial, plata, oro, platino]
+        pais_origen:
+          type: string
+
+    Subasta:
+      type: object
+      properties:
+        id:
+          type: integer
+        fecha_hora:
+          type: string
+          format: date-time
+        categoria:
+          type: string
+          enum: [comun, especial, plata, oro, platino]
+        moneda:
+          type: string
+          enum: [ARS, USD]
+        estado:
+          type: string
+          enum: [pendiente, abierta, cerrada]
+        rematador:
+          type: string
+
+    Item:
+      type: object
+      properties:
+        id:
+          type: integer
+        numero_pieza:
+          type: string
+        descripcion:
+          type: string
+        precio_base:
+          type: number
+        dueno_actual:
+          type: string
+        vendido:
+          type: boolean
+
+    Puja:
+      type: object
+      properties:
+        id:
+          type: integer
+        subasta_id:
+          type: integer
+        item_id:
+          type: integer
+        postor_id:
+          type: integer
+        monto:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags: [Autenticación]
+      summary: Registro etapa 1 — datos personales
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, apellido, domicilio, pais_origen]
+              properties:
+                nombre:
+                  type: string
+                apellido:
+                  type: string
+                domicilio:
+                  type: string
+                pais_origen:
+                  type: string
+      responses:
+        "201":
+          description: Solicitud de registro enviada para verificación
+        "400":
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/complete-register:
+    post:
+      tags: [Autenticación]
+      summary: Registro etapa 2 — crear clave y medio de pago
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, medio_pago]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+                medio_pago:
+                  type: object
+      responses:
+        "200":
+          description: Registro completado
+        "400":
+          description: Datos inválidos o usuario no encontrado
+
+  /auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Login del usuario
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  usuario:
+                    $ref: "#/components/schemas/Usuario"
+        "401":
+          description: Credenciales inválidas
+
+  /subastas:
+    get:
+      tags: [Subastas]
+      summary: Listar subastas abiertas
+      responses:
+        "200":
+          description: Lista de subastas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Subasta"
+
+  /subastas/{id}:
+    get:
+      tags: [Subastas]
+      summary: Detalle de una subasta y su catálogo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Detalle de la subasta con catálogo
+        "404":
+          description: Subasta no encontrada
+
+  /subastas/{id}/pujar:
+    post:
+      tags: [Pujas]
+      summary: Realizar una puja en una subasta
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [item_id, monto, medio_pago_id]
+              properties:
+                item_id:
+                  type: integer
+                monto:
+                  type: number
+                medio_pago_id:
+                  type: integer
+      responses:
+        "200":
+          description: Puja registrada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Puja"
+        "400":
+          description: Monto inválido (fuera de rango permitido)
+        "403":
+          description: Sin permisos para participar en esta subasta
+
+  /usuarios/me:
+    get:
+      tags: [Usuarios]
+      summary: Perfil del usuario autenticado
+      responses:
+        "200":
+          description: Datos del usuario con métricas
+
+  /usuarios/me/bienes:
+    get:
+      tags: [Usuarios]
+      summary: Bienes del usuario entregados a la empresa
+      responses:
+        "200":
+          description: Lista de bienes
+    post:
+      tags: [Usuarios]
+      summary: Solicitar subasta de un bien propio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descripcion, fotos, declara_propiedad]
+              properties:
+                descripcion:
+                  type: string
+                fotos:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 6
+                declara_propiedad:
+                  type: boolean
+                  enum: [true]
+                datos_historicos:
+                  type: string
+      responses:
+        "201":
+          description: Solicitud enviada para inspección
+        "400":
+          description: Datos inválidos o declaración de propiedad faltante
+
+  /usuarios/me/medios-pago:
+    get:
+      tags: [Medios de Pago]
+      summary: Listar medios de pago del usuario
+      responses:
+        "200":
+          description: Lista de medios de pago
+    post:
+      tags: [Medios de Pago]
+      summary: Agregar un medio de pago
+      responses:
+        "201":
+          description: Medio de pago agregado
